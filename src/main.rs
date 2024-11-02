@@ -1,5 +1,7 @@
+use std::env;
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::path::Path;
 use std::process::exit;
 
 fn main() {
@@ -27,7 +29,18 @@ fn eval(input: &str) -> String {
         "echo" => args.join(" "),
         "type" => match args[0] {
             "exit" | "echo" | "type" => format!("{} is a shell builtin", args[0]),
-            _ => format!("{}: not found", args[0]),
+            _ => {
+                let filename = args[0];
+                match env::var("PATH")
+                    .unwrap()
+                    .split(":")
+                    .map(|dir| Path::new(dir).join(filename))
+                    .find(|fullpath| fullpath.exists())
+                {
+                    Some(fullpath) => format!("{} is {}", filename, fullpath.display()),
+                    None => format!("{}: not found", args[0]),
+                }
+            }
         },
         _ => format!("{}: command not found", cmd),
     }
