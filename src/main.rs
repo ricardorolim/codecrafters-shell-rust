@@ -19,8 +19,12 @@ fn main() {
 }
 
 fn eval(input: &str) -> String {
-    match input {
-        input if input.starts_with("exit") => exit(0),
+    let words: Vec<&str> = input.split_whitespace().collect();
+    let (cmd, args) = words.split_first().unwrap();
+
+    match *cmd {
+        "exit" => exit(0),
+        "echo" => args.join(" "),
         _ => format!("{}: command not found", input),
     }
 }
