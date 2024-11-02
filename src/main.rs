@@ -28,7 +28,7 @@ fn eval(input: &str) -> String {
         "exit" => exit(0),
         "echo" => args.join(" "),
         "type" => match args[0] {
-            "exit" | "echo" | "type" => format!("{} is a shell builtin", args[0]),
+            "exit" | "echo" | "type" | "pwd" => format!("{} is a shell builtin", args[0]),
             _ => {
                 let filename = args[0];
                 match find(filename) {
@@ -37,6 +37,7 @@ fn eval(input: &str) -> String {
                 }
             }
         },
+        "pwd" => env::current_dir().unwrap().to_string_lossy().to_string(),
         _ => {
             if find(cmd).is_some() {
                 let output = Command::new(cmd).args(args).output().unwrap();
