@@ -1,8 +1,8 @@
 use std::env;
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::path::Path;
-use std::process::exit;
+use std::path::{Path, PathBuf};
+use std::process::{exit, Command};
 
 fn main() {
     loop {
@@ -31,17 +31,36 @@ fn eval(input: &str) -> String {
             "exit" | "echo" | "type" => format!("{} is a shell builtin", args[0]),
             _ => {
                 let filename = args[0];
-                match env::var("PATH")
-                    .unwrap()
-                    .split(":")
-                    .map(|dir| Path::new(dir).join(filename))
-                    .find(|fullpath| fullpath.exists())
-                {
+                match find(filename) {
                     Some(fullpath) => format!("{} is {}", filename, fullpath.display()),
-                    None => format!("{}: not found", args[0]),
+                    None => format!("{}: not found", filename),
                 }
             }
         },
-        _ => format!("{}: command not found", cmd),
+        _ => {
+            if find(cmd).is_some() {
+                let output = Command::new(cmd).args(args).output().unwrap();
+
+                if output.status.success() {
+                    String::from_utf8_lossy(&output.stdout)
+                        .trim_end()
+                        .to_string()
+                } else {
+                    String::from_utf8_lossy(&output.stderr)
+                        .trim_end()
+                        .to_string()
+                }
+            } else {
+                format!("{}: command not found", cmd)
+            }
+        }
     }
+}
+
+fn find(filename: &str) -> Option<PathBuf> {
+    env::var("PATH")
+        .unwrap()
+        .split(":")
+        .map(|dir| Path::new(dir).join(filename))
+        .find(|fullpath| fullpath.exists())
 }
