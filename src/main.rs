@@ -25,6 +25,10 @@ fn eval(input: &str) -> String {
     match *cmd {
         "exit" => exit(0),
         "echo" => args.join(" "),
-        _ => format!("{}: command not found", input),
+        "type" => match args[0] {
+            "exit" | "echo" | "type" => format!("{} is a shell builtin", args[0]),
+            _ => format!("{}: not found", args[0]),
+        },
+        _ => format!("{}: command not found", cmd),
     }
 }
