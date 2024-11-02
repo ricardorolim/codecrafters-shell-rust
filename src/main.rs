@@ -1,4 +1,5 @@
 use std::env;
+use std::fmt::format;
 #[allow(unused_imports)]
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -14,47 +15,57 @@ fn main() {
         let mut input = String::new();
         stdin.read_line(&mut input).unwrap();
 
-        let res = eval(input.trim());
-
-        println!("{}", res);
+        if let Some(output) = eval(input.trim()) {
+            println!("{}", output);
+        }
     }
 }
 
-fn eval(input: &str) -> String {
+fn eval(input: &str) -> Option<String> {
     let words: Vec<&str> = input.split_whitespace().collect();
     let (cmd, args) = words.split_first().unwrap();
 
     match *cmd {
         "exit" => exit(0),
-        "echo" => args.join(" "),
+        "echo" => Some(args.join(" ")),
         "type" => match args[0] {
-            "exit" | "echo" | "type" | "pwd" => format!("{} is a shell builtin", args[0]),
+            "exit" | "echo" | "type" | "pwd" => Some(format!("{} is a shell builtin", args[0])),
             _ => {
                 let filename = args[0];
                 match find(filename) {
-                    Some(fullpath) => format!("{} is {}", filename, fullpath.display()),
-                    None => format!("{}: not found", filename),
+                    Some(fullpath) => Some(format!("{} is {}", filename, fullpath.display())),
+                    None => Some(format!("{}: not found", filename)),
                 }
             }
         },
-        "pwd" => env::current_dir().unwrap().to_string_lossy().to_string(),
-        _ => {
-            if find(cmd).is_some() {
-                let output = Command::new(cmd).args(args).output().unwrap();
+        "pwd" => Some(env::current_dir().unwrap().to_string_lossy().to_string()),
+        "cd" => match env::set_current_dir(args[0]) {
+            Ok(..) => None,
+            Err(..) => Some(format!("cd: {}: No such file or directory", args[0])),
+        },
+        _ => run_program(cmd, args),
+    }
+}
 
-                if output.status.success() {
-                    String::from_utf8_lossy(&output.stdout)
-                        .trim_end()
-                        .to_string()
-                } else {
-                    String::from_utf8_lossy(&output.stderr)
-                        .trim_end()
-                        .to_string()
-                }
-            } else {
-                format!("{}: command not found", cmd)
-            }
+fn run_program(cmd: &str, args: &[&str]) -> Option<String> {
+    if find(cmd).is_some() {
+        let output = Command::new(cmd).args(args).output().unwrap();
+
+        if output.status.success() {
+            Some(
+                String::from_utf8_lossy(&output.stdout)
+                    .trim_end()
+                    .to_string(),
+            )
+        } else {
+            Some(
+                String::from_utf8_lossy(&output.stderr)
+                    .trim_end()
+                    .to_string(),
+            )
         }
+    } else {
+        Some(format!("{}: command not found", cmd))
     }
 }
 
