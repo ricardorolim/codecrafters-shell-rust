@@ -52,7 +52,7 @@ fn eval(input: &str) -> Option<String> {
         Builtin::Type => handle_type(args),
         Builtin::Pwd => Some(env::current_dir().unwrap().to_string_lossy().to_string()),
         Builtin::Cd => handle_cd(args),
-        _ => run_program(cmd, args),
+        Builtin::Unknown => run_program(cmd, args),
     }
 }
 
@@ -69,7 +69,13 @@ fn handle_type(args: &[&str]) -> Option<String> {
 }
 
 fn handle_cd(args: &[&str]) -> Option<String> {
-    match env::set_current_dir(args[0]) {
+    let dir = if args[0].contains("~") {
+        &env::var("HOME").unwrap()
+    } else {
+        args[0]
+    };
+
+    match env::set_current_dir(dir) {
         Ok(..) => None,
         Err(..) => Some(format!("cd: {}: No such file or directory", args[0])),
     }
